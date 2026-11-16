@@ -2,7 +2,7 @@
 
 A fully **local** Retrieval-Augmented Generation system for recruiters. Index resumes, **ask questions in natural language** ("Who has Kubernetes and Terraform experience?"), and **rank candidates against a job description** with transparent, explainable scores. An optional **blind-screening mode** masks personal identifiers before anything is displayed or sent to the LLM.
 
-> Built by extending a modular open-source RAG pipeline ([Pixegami's *Simple RAG Pipeline*](https://github.com/pixegami)) with a resume parser, hybrid retrieval, a job-matching engine, privacy controls, a Streamlit UI and a retrieval evaluation harness.
+>Architecture adapted from the modular RAG pipeline pattern (Indexer / Datastore / Retriever / ResponseGenerator / Evaluator) in Pixegami’s open-source tutorial project (no license file found). The resume parser, hybrid retriever, candidate matcher, blind-screening mode, Streamlit UI and tests are original to this project. ([Pixegami's *Simple RAG Pipeline*](https://github.com/pixegami)) 
 
 ---
 
