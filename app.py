@@ -4,7 +4,7 @@ import tempfile
 
 import streamlit as st
 
-from src.factory import create_pipeline
+from recruitrag.factory import create_pipeline
 
 st.set_page_config(page_title="RecruitRAG", page_icon="🧑‍💼", layout="wide")
 
@@ -33,14 +33,14 @@ with st.sidebar:
                 out.write(f.getbuffer())
             paths.append(path)
         with st.spinner("Parsing and indexing…"):
-            n = pipe.add_documents(paths)
+            n = pipe.ingest(paths)
         st.success(f"Indexed {n} resume(s)")
     if st.button("Index bundled sample resumes"):
         folder = "sample_data/resumes"
-        pipe.add_documents([os.path.join(folder, f) for f in sorted(os.listdir(folder))])
+        pipe.ingest([os.path.join(folder, f) for f in sorted(os.listdir(folder))])
         st.success("Sample resumes indexed")
 
-profiles = pipe.datastore.get_profiles()
+profiles = pipe.store.get_profiles()
 st.sidebar.metric("Candidates indexed", len(profiles))
 
 tab_chat, tab_match, tab_profiles = st.tabs(["💬 Ask about candidates", "🎯 Match to a job", "📇 Profiles"])
@@ -108,7 +108,7 @@ with tab_profiles:
     if not profiles:
         st.info("No resumes indexed yet.")
     else:
-        from src.util.privacy import Anonymizer
+        from recruitrag.privacy import Anonymizer
         anon = Anonymizer(profiles.values())
         rows = []
         for p in profiles.values():

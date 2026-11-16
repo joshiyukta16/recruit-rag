@@ -1,8 +1,7 @@
 from typing import List
 
-from ..interface.base_response_generator import BaseResponseGenerator
-from ..interface.models import CandidateMatch, JobRequirements, SearchHit
-from ..util.invoke_ai import invoke_ai
+from .models import CandidateMatch, JobRequirements, SearchHit
+from .llm import ask_llm
 
 SYSTEM_PROMPT = """You are RecruitRAG, an assistant that helps recruiters understand candidate resumes.
 Rules:
@@ -58,13 +57,13 @@ def template_explanation(job: JobRequirements, m: CandidateMatch) -> str:
     return "; ".join(parts) + "."
 
 
-class ResponseGenerator(BaseResponseGenerator):
-    def generate_response(self, query: str, hits: List[SearchHit], facts: str = "") -> str:
+class LLMResponder:
+    def respond(self, query: str, hits: List[SearchHit], facts: str = "") -> str:
         if not hits and not facts:
             return "I couldn't find any resume content relevant to that question."
         user_message = (f"<facts>\n{facts or 'none'}\n</facts>\n<context>\n{build_context(hits)}\n</context>\n"
                         f"<question>\n{query}\n</question>")
-        answer = invoke_ai(system_message=SYSTEM_PROMPT, user_message=user_message)
+        answer = ask_llm(SYSTEM_PROMPT, user_message)
         return extractive_fallback(hits, facts) if _looks_broken(answer) else answer
 
     def explain_match(self, job: JobRequirements, match: CandidateMatch) -> str:
@@ -72,4 +71,4 @@ class ResponseGenerator(BaseResponseGenerator):
 
     def llm_explain_match(self, job: JobRequirements, match: CandidateMatch) -> str:
         """Optional LLM prose. Small models can contradict the facts - verify before trusting."""
-        return invoke_ai(system_message=MATCH_PROMPT, user_message=template_explanation(job, match))
+        return ask_llm(MATCH_PROMPT, template_explanation(job, match))

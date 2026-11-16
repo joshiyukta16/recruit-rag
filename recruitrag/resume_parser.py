@@ -7,7 +7,7 @@ import re
 from datetime import date
 from typing import Dict, List, Optional, Tuple
 
-from ..interface.models import ResumeProfile
+from .models import ResumeProfile
 from .skills import extract_skills
 
 SECTION_ALIASES = {

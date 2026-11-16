@@ -1,9 +1,9 @@
 """Job-description -> candidate ranking with explainable sub-scores."""
 from typing import Dict, List, Optional
 
-from ..interface.base_datastore import BaseDatastore
-from ..interface.models import CandidateMatch, JobRequirements
-from ..util.job_parser import parse_job
+from .contracts import Store
+from .models import CandidateMatch, JobRequirements
+from .job_parser import parse_job
 
 DEFAULT_WEIGHTS = {"skills": 0.50, "semantic": 0.30, "experience": 0.20}
 # Raw MiniLM cosine between a JD's requirements and a resume's best chunks was observed in
@@ -17,9 +17,9 @@ def _clip(x: float) -> float:
 
 
 class CandidateMatcher:
-    def __init__(self, datastore: BaseDatastore, weights: Optional[Dict[str, float]] = None,
+    def __init__(self, store: Store, weights: Optional[Dict[str, float]] = None,
                  sem_low: float = SEM_LOW, sem_high: float = SEM_HIGH):
-        self.datastore = datastore
+        self.store = store
         self.weights = weights or DEFAULT_WEIGHTS
         self.sem_low, self.sem_high = sem_low, sem_high
 
@@ -27,7 +27,7 @@ class CandidateMatcher:
         """candidate_id -> (mean cosine of top-3 chunks, those chunks). Uses requirements only,
         so company blurb text in the JD cannot attract unrelated resumes."""
         query = job.requirements_text or job.raw_text
-        hits = self.datastore.search(query, top_k=max(60, len(self.datastore.get_profiles()) * 5))
+        hits = self.store.search(query, top_k=max(60, len(self.store.get_profiles()) * 5))
         by_cand: Dict[str, list] = {}
         for h in hits:
             by_cand.setdefault(h.candidate_id, []).append(h)
@@ -39,14 +39,14 @@ class CandidateMatcher:
 
     def raw_scores(self, job_text: str) -> List[tuple]:
         """For calibration: [(name, raw_similarity)] best first."""
-        profiles = self.datastore.get_profiles()
+        profiles = self.store.get_profiles()
         raw = self.raw_semantic(parse_job(job_text))
         rows = [(profiles[c].name if c in profiles else c, v[0]) for c, v in raw.items()]
         return sorted(rows, key=lambda r: r[1], reverse=True)
 
     def rank(self, job_text: str, top_n: int = 10) -> tuple:
         job: JobRequirements = parse_job(job_text)
-        profiles = self.datastore.get_profiles()
+        profiles = self.store.get_profiles()
         raw = self.raw_semantic(job)
         w = dict(self.weights)
         if not job.required_skills and not job.preferred_skills:

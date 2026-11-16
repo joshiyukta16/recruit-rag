@@ -4,7 +4,7 @@ import os
 from typing import List
 
 from create_parser import create_parser
-from src.factory import create_pipeline
+from recruitrag.factory import create_pipeline
 
 
 def get_files(path: str) -> List[str]:
@@ -28,7 +28,7 @@ def print_matches(job, matches) -> None:
         print()
 
 
-def main():
+def run():
     args = create_parser().parse_args()
     pipeline = create_pipeline()
 
@@ -36,10 +36,10 @@ def main():
         pipeline.reset()
 
     elif args.command == "add":
-        pipeline.add_documents(get_files(args.path))
+        pipeline.ingest(get_files(args.path))
 
     elif args.command == "profiles":
-        for p in pipeline.datastore.get_profiles().values():
+        for p in pipeline.store.get_profiles().values():
             print(f"• {p.name} <{p.email}> | {p.years_experience} yrs | {', '.join(p.skills)}")
 
     elif args.command == "query":
@@ -75,8 +75,16 @@ def main():
         print(f"\n📊 Hit@{r['k']}: {r['hit_rate']:.0%} | Recall@{r['k']}: {r['recall']:.0%} | "
               f"MRR: {r['mrr']:.2f} ({r['n_questions']} questions)")
         if args.llm_judge:
-            results = pipeline.evaluate_answers(questions)
-            print(f"🧑‍⚖️ LLM-judge score: {sum(x.is_correct for x in results)}/{len(results)}")
+            results = pipeline.judge_answers(questions)
+            print(f"🧑‍⚖️ LLM-judge score: {sum(x.correct for x in results)}/{len(results)}")
+
+
+def main():
+    try:
+        run()
+    except RuntimeError as exc:      # e.g. Ollama not running: show the hint, not a stack trace
+        print(f"\n⚠️  {exc}")
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

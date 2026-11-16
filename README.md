@@ -2,7 +2,7 @@
 
 A fully **local** Retrieval-Augmented Generation system for recruiters. Index resumes, **ask questions in natural language** ("Who has Kubernetes and Terraform experience?"), and **rank candidates against a job description** with transparent, explainable scores. An optional **blind-screening mode** masks personal identifiers before anything is displayed or sent to the LLM.
 
->Architecture adapted from the modular RAG pipeline pattern (Indexer / Datastore / Retriever / ResponseGenerator / Evaluator) in Pixegami’s open-source tutorial project (no license file found). The resume parser, hybrid retriever, candidate matcher, blind-screening mode, Streamlit UI and tests are original to this project. ([Pixegami's *Simple RAG Pipeline*](https://github.com/pixegami)) 
+> Inspired by the component-based layout of [Pixegami's](https://github.com/pixegami) open-source RAG tutorial; all code in this repository was written for this project.
 
 ---
 
@@ -19,6 +19,36 @@ A fully **local** Retrieval-Augmented Generation system for recruiters. Index re
 | **Fairness guardrails** | Prompts forbid inferring or ranking by protected attributes |
 | **Evaluation** | Hit@k, Recall@k, MRR on a labelled question set + a `calibrate` command for the semantic-score scale |
 | **Interfaces** | CLI (`--json` output for integrations) and a Streamlit web app (chat, JD matching, profiles) |
+
+## 🗂️ Project structure
+
+```
+recruit-rag/
+├── main.py                 # command-line interface
+├── create_parser.py        # CLI arguments
+├── app.py                  # Streamlit web app
+├── recruitrag/
+│   ├── models.py           # dataclasses shared by every module
+│   ├── contracts.py        # typing.Protocol interfaces (Store, Indexer, Searcher, Responder, Grader)
+│   ├── pipeline.py         # RecruitPipeline: ingest, ask, match_job, evaluate
+│   ├── factory.py          # builds a pipeline (LanceDB or in-memory store)
+│   ├── resume_parser.py    # sections, name, contact, skills, experience years
+│   ├── job_parser.py       # job description -> required / preferred skills, min years
+│   ├── skills.py           # skill taxonomy and matcher
+│   ├── indexing.py         # section-aware chunking
+│   ├── embeddings.py       # MiniLM (or a hashing embedder for tests)
+│   ├── store_lance.py      # LanceDB vector store + profile store
+│   ├── store_memory.py     # in-memory store for tests and demos
+│   ├── retrieval.py        # hybrid retriever
+│   ├── matching.py         # candidate ranking and sub-scores
+│   ├── answering.py        # prompts, skill-fact fallback, deterministic explanations
+│   ├── llm.py              # Ollama wrapper with actionable errors
+│   ├── privacy.py          # blind-screening anonymizer
+│   ├── evaluation.py       # Hit@k / MRR and an LLM answer grader
+│   └── text_loader.py      # TXT/MD and Docling (PDF/DOCX) loading
+├── sample_data/            # fictional resumes, job descriptions, labelled questions
+└── tests/                  # unit tests (no model download needed)
+```
 
 ## 🏗️ Architecture
 
@@ -83,7 +113,7 @@ Developed and run on a **Windows laptop with 4 GB RAM** (virtual memory extended
 
 `sample_data/eval/sample_questions.json` labels which candidates *should* be retrieved for each question. `python main.py evaluate` reports **Hit@k, Recall@k, MRR**. The bundled set is small and synthetic (8 easy queries), so it validates the plumbing rather than real-world accuracy; add harder, paraphrased and no-match questions before drawing conclusions.
 
-Unit tests (no model download needed; they use a deterministic hashing embedder):
+33 unit tests (no model download needed; they use a deterministic hashing embedder and a fake LLM):
 
 ```bash
 python -m unittest discover -s tests -v
@@ -98,6 +128,7 @@ python -m unittest discover -s tests -v
 - **JD embedding uses requirements only:** company-blurb text no longer attracts unrelated resumes.
 - **Privacy by design:** local processing; blind mode masks PII before the LLM sees it.
 - **Idempotent indexing:** re-adding a resume replaces its old chunks.
+- **Protocols, not base classes:** components are described by `typing.Protocol` contracts, so a store or LLM can be swapped (or faked in tests) without inheritance.
 
 ## ⚠️ Limitations
 
@@ -118,4 +149,4 @@ python -m unittest discover -s tests -v
 
 ## 🙏 Acknowledgements
 
-Based on the open-source **Simple RAG Pipeline** by Pixegami. Uses LanceDB, Sentence-Transformers, Docling, Ollama and Streamlit.
+The idea of splitting a RAG system into indexer / store / retriever / generator components was inspired by Pixegami's open-source RAG tutorial; the code here was written independently. Uses LanceDB, Sentence-Transformers, Docling, Ollama and Streamlit.

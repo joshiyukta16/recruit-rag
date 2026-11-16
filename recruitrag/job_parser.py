@@ -1,7 +1,7 @@
 """Turn a free-text job description into structured requirements."""
 import re
 
-from ..interface.models import JobRequirements
+from .models import JobRequirements
 from .skills import extract_skills
 
 _PREFERRED_RE = re.compile(r"nice to have|preferred|bonus|good to have|a plus|desirable", re.I)

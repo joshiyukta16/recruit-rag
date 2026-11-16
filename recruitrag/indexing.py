@@ -4,10 +4,9 @@ import re
 from datetime import date
 from typing import Dict, List, Optional, Tuple
 
-from ..interface.base_indexer import BaseIndexer
-from ..interface.models import DataItem, ResumeProfile
-from ..util.resume_parser import parse_resume
-from ..util.text_loader import SUPPORTED_EXTENSIONS, load_document
+from .models import Chunk, ResumeProfile
+from .resume_parser import parse_resume
+from .text_loader import SUPPORTED_EXTENSIONS, load_document
 
 MAX_CHUNK_CHARS = 900
 
@@ -39,12 +38,12 @@ def _pack(text: str, limit: int) -> List[str]:
     return chunks
 
 
-def chunk_resume(profile: ResumeProfile, sections: Dict[str, str], limit: int = MAX_CHUNK_CHARS) -> List[DataItem]:
+def chunk_resume(profile: ResumeProfile, sections: Dict[str, str], limit: int = MAX_CHUNK_CHARS) -> List[Chunk]:
     """Every chunk is prefixed with candidate + section so it is self-describing at retrieval time."""
-    items: List[DataItem] = []
+    items: List[Chunk] = []
     for section, body in sections.items():
         for piece in _pack(body, limit):
-            items.append(DataItem(
+            items.append(Chunk(
                 content=f"Candidate: {profile.name} | Section: {section}\n{piece}",
                 source=f"{profile.candidate_id}:{len(items)}",
                 candidate_id=profile.candidate_id,
@@ -53,12 +52,12 @@ def chunk_resume(profile: ResumeProfile, sections: Dict[str, str], limit: int = 
     return items
 
 
-class Indexer(BaseIndexer):
+class ResumeIndexer:
     def __init__(self, today: Optional[date] = None):
         self.today = today
 
-    def index(self, document_paths: List[str]) -> Tuple[List[DataItem], List[ResumeProfile]]:
-        items: List[DataItem] = []
+    def index(self, document_paths: List[str]) -> Tuple[List[Chunk], List[ResumeProfile]]:
+        items: List[Chunk] = []
         profiles: List[ResumeProfile] = []
         for path in document_paths:
             if os.path.splitext(path)[1].lower() not in SUPPORTED_EXTENSIONS:

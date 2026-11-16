@@ -7,11 +7,11 @@ from unittest import mock
 os.environ["RECRUIT_RAG_EMBEDDER"] = "hash"      # no model download needed
 os.environ["RECRUIT_RAG_STORE"] = "memory"
 
-from src.factory import create_pipeline
-from src.util.job_parser import parse_job
-from src.util.privacy import Anonymizer
-from src.util.resume_parser import compute_experience_years, parse_resume
-from src.util.skills import extract_skills
+from recruitrag.factory import create_pipeline
+from recruitrag.job_parser import parse_job
+from recruitrag.privacy import Anonymizer
+from recruitrag.resume_parser import compute_experience_years, parse_resume
+from recruitrag.skills import extract_skills
 
 TODAY = date(2026, 11, 14)
 RES = "sample_data/resumes"
@@ -115,17 +115,17 @@ class PipelineTests(unittest.TestCase):
     def setUpClass(cls):
         cls.pipe = create_pipeline("memory")
         cls.pipe.indexer.today = TODAY
-        cls.n = cls.pipe.add_documents(sorted(
+        cls.n = cls.pipe.ingest(sorted(
             os.path.join(RES, f) for f in os.listdir(RES)))
 
     def test_indexed_all(self):
         self.assertEqual(self.n, 7)
-        self.assertEqual(len(self.pipe.datastore.get_profiles()), 7)
+        self.assertEqual(len(self.pipe.store.get_profiles()), 7)
 
     def test_reindex_is_idempotent(self):
-        before = len(self.pipe.datastore.items)
-        self.pipe.add_documents([os.path.join(RES, "liam_chen.txt")])
-        self.assertEqual(len(self.pipe.datastore.items), before)
+        before = len(self.pipe.store.chunks)
+        self.pipe.ingest([os.path.join(RES, "liam_chen.txt")])
+        self.assertEqual(len(self.pipe.store.chunks), before)
 
     def test_named_candidate_query_is_scoped(self):
         hits = self.pipe.retriever.search("What are Priya's skills?", top_k=5)
@@ -177,7 +177,7 @@ class PipelineTests(unittest.TestCase):
             captured["msg"] = user_message
             return "Candidate C has both Kubernetes and Terraform experience."
 
-        with mock.patch("src.impl.response_generator.invoke_ai", fake_llm):
+        with mock.patch("recruitrag.answering.ask_llm", fake_llm):
             ans = self.pipe.ask("Who knows Kubernetes and Terraform?", anonymize=True)
         self.assertEqual(ans.text, "Candidate C has both Kubernetes and Terraform experience.")
         self.assertIn("<question>", captured["msg"])
@@ -186,8 +186,8 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(all(h.candidate_id.startswith("Candidate") for h in ans.hits))
 
     def test_no_hits_skips_llm(self):
-        with mock.patch("src.impl.response_generator.invoke_ai", side_effect=AssertionError("must not call")):
-            self.assertIn("couldn't find", self.pipe.response_generator.generate_response("x", []))
+        with mock.patch("recruitrag.answering.ask_llm", side_effect=AssertionError("must not call")):
+            self.assertIn("couldn't find", self.pipe.responder.respond("x", []))
 
 
 class RobustnessTests(unittest.TestCase):
@@ -197,7 +197,7 @@ class RobustnessTests(unittest.TestCase):
     def setUpClass(cls):
         cls.pipe = create_pipeline("memory")
         cls.pipe.indexer.today = TODAY
-        cls.pipe.add_documents(sorted(os.path.join(RES, f) for f in os.listdir(RES)))
+        cls.pipe.ingest(sorted(os.path.join(RES, f) for f in os.listdir(RES)))
 
     def test_requirements_text_excludes_company_blurb(self):
         j = parse_job(read(f"{JOBS}/ml_engineer_llm.txt"))
@@ -211,7 +211,7 @@ class RobustnessTests(unittest.TestCase):
             captured["msg"] = user_message
             return "Liam Chen has both Kubernetes and Terraform skills."
 
-        with mock.patch("src.impl.response_generator.invoke_ai", fake_llm):
+        with mock.patch("recruitrag.answering.ask_llm", fake_llm):
             self.pipe.ask("Who has experience with Kubernetes and Terraform?")
         facts = captured["msg"].split("<facts>")[1].split("</facts>")[0]
         self.assertIn("Liam Chen", facts)
@@ -219,21 +219,21 @@ class RobustnessTests(unittest.TestCase):
 
     def test_skill_facts_respect_blind_mode(self):
         captured = {}
-        with mock.patch("src.impl.response_generator.invoke_ai",
+        with mock.patch("recruitrag.answering.ask_llm",
                         lambda system_message, user_message: captured.setdefault("m", user_message) and "A long enough stub answer for the checker."):
             self.pipe.ask("Who has Kubernetes and Terraform?", anonymize=True)
         self.assertNotIn("Liam", captured["m"])
         self.assertIn("Candidate", captured["m"])
 
     def test_echoed_header_falls_back_to_facts(self):
-        with mock.patch("src.impl.response_generator.invoke_ai",
+        with mock.patch("recruitrag.answering.ask_llm",
                         lambda system_message, user_message: "Aarav Mehta | Section: experience"):
             ans = self.pipe.ask("Who has experience with Kubernetes and Terraform?")
         self.assertIn("Liam Chen", ans.text)
         self.assertNotIn("| Section:", ans.text)
 
     def test_explain_is_deterministic_and_never_calls_llm(self):
-        with mock.patch("src.impl.response_generator.invoke_ai", side_effect=AssertionError("no LLM")):
+        with mock.patch("recruitrag.answering.ask_llm", side_effect=AssertionError("no LLM")):
             _, matches = self.pipe.match_job(read(f"{JOBS}/ml_engineer_llm.txt"), top_n=7, explain=True)
         aarav = next(m for m in matches if m.candidate_id == "aarav_mehta")
         self.assertIn("missing", aarav.explanation)
@@ -244,6 +244,67 @@ class RobustnessTests(unittest.TestCase):
         rows = self.pipe.matcher.raw_scores(read(f"{JOBS}/ml_engineer_llm.txt"))
         self.assertEqual(len(rows), 7)
         self.assertEqual(rows, sorted(rows, key=lambda r: r[1], reverse=True))
+
+
+class NewModuleTests(unittest.TestCase):
+    def test_tag_text(self):
+        from recruitrag.xml_tags import tag_text
+        self.assertEqual(tag_text("x <why> because\nit works </why> y", "why"), "because\nit works")
+        self.assertEqual(tag_text("<VERDICT>correct</VERDICT>", "verdict"), "correct")
+        self.assertIsNone(tag_text("no tags here", "why"))
+        self.assertIsNone(tag_text("<why>unclosed", "why"))
+
+    def test_judge_parses_verdicts(self):
+        from recruitrag.evaluation import AnswerJudge
+        cases = [
+            ("<why>same</why><verdict>correct</verdict>", True),
+            ("<why>differs</why><verdict>incorrect</verdict>", False),   # 'incorrect' must not count as correct
+            ("I think it is fine", False),                                # unparseable -> not correct
+        ]
+        for reply, expected in cases:
+            with self.subTest(reply), mock.patch("recruitrag.evaluation.ask_llm", return_value=reply):
+                v = AnswerJudge().grade("q", "a", "ref")
+                self.assertEqual(v.correct, expected)
+
+    def test_llm_wrapper_returns_text_and_wraps_failures(self):
+        import sys, types
+        from recruitrag import llm
+        ok = types.SimpleNamespace(chat=lambda **kw: {"message": {"content": "hello"}})
+        with mock.patch.dict(sys.modules, {"ollama": ok}):
+            self.assertEqual(llm.ask_llm("sys", "user"), "hello")
+
+        def boom(**kw):
+            raise ConnectionError("refused")
+        down = types.SimpleNamespace(chat=boom)
+        with mock.patch.dict(sys.modules, {"ollama": down}):
+            with self.assertRaises(RuntimeError) as ctx:
+                llm.ask_llm("sys", "user")
+        self.assertIn("Ollama", str(ctx.exception))
+        self.assertIn("ollama pull", str(ctx.exception))
+
+    def test_model_env_override(self):
+        from recruitrag import llm
+        with mock.patch.dict(os.environ, {"RECRUIT_RAG_MODEL": "llama3.2:3b"}):
+            self.assertEqual(llm.model_name(), "llama3.2:3b")
+
+    def test_implementations_satisfy_contracts(self):
+        from recruitrag import contracts
+        from recruitrag.answering import LLMResponder
+        from recruitrag.evaluation import AnswerJudge
+        from recruitrag.indexing import ResumeIndexer
+        from recruitrag.retrieval import HybridRetriever
+        from recruitrag.store_lance import LanceStore
+        from recruitrag.store_memory import MemoryStore
+        pipe = create_pipeline("memory")
+        self.assertIsInstance(pipe.store, contracts.Store)
+        self.assertIsInstance(pipe.indexer, contracts.Indexer)
+        self.assertIsInstance(pipe.retriever, contracts.Searcher)
+        self.assertIsInstance(pipe.responder, contracts.Responder)
+        self.assertIsInstance(AnswerJudge(), contracts.Grader)
+        # LanceStore needs the lancedb package to instantiate, so check its surface on the class
+        for method in ("reset", "add_chunks", "delete_candidate", "add_profiles", "get_profiles", "embed", "search"):
+            self.assertTrue(callable(getattr(LanceStore, method)), method)
+            self.assertTrue(callable(getattr(MemoryStore, method)), method)
 
 
 class AnonymizerTests(unittest.TestCase):

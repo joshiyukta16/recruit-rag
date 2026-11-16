@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 
 @dataclass
-class DataItem:
+class Chunk:
     """One indexed chunk of a resume."""
     content: str = ""
     source: str = ""        # unique chunk id: "<candidate_id>:<n>"
@@ -76,9 +76,9 @@ class Answer:
 
 
 @dataclass
-class EvaluationResult:
+class JudgeVerdict:
     question: str
     response: str
-    expected_answer: str
-    is_correct: bool
+    reference: str
+    correct: bool
     reasoning: Optional[str] = None

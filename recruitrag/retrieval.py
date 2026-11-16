@@ -2,9 +2,8 @@
 import re
 from typing import List, Optional, Set
 
-from ..interface.base_datastore import BaseDatastore
-from ..interface.base_retriever import BaseRetriever
-from ..interface.models import SearchHit
+from .contracts import Store
+from .models import SearchHit
 
 _STOP = set("""a an and are any about all at be by can candidate candidates do does experience find for from give has have
 how i in is it list me of on or resume resumes show tell that the their there to was were what when where which who
@@ -15,16 +14,16 @@ def _terms(text: str) -> Set[str]:
     return {t for t in re.findall(r"[a-z0-9+#.]+", text.lower()) if t not in _STOP and len(t) > 1}
 
 
-class Retriever(BaseRetriever):
-    def __init__(self, datastore: BaseDatastore, vector_weight: float = 0.7):
-        self.datastore = datastore
+class HybridRetriever:
+    def __init__(self, store: Store, vector_weight: float = 0.7):
+        self.store = store
         self.vector_weight = vector_weight
 
     def _mentioned_candidates(self, query: str) -> Set[str]:
         """If the query names a candidate ("What are Priya's skills?"), restrict to them."""
         words = set(re.findall(r"[a-z]+", query.lower()))
         found = set()
-        for cid, p in self.datastore.get_profiles().items():
+        for cid, p in self.store.get_profiles().items():
             if any(len(part) >= 3 and part.lower() in words for part in p.name.split()):
                 found.add(cid)
         return found
@@ -36,7 +35,7 @@ class Retriever(BaseRetriever):
             candidate_ids = (candidate_ids & named) if candidate_ids else named
             max_per_candidate = max(max_per_candidate, top_k)  # drill into one person freely
 
-        pool = self.datastore.search(query, top_k=max(top_k * 6, 40), candidate_ids=candidate_ids)
+        pool = self.store.search(query, top_k=max(top_k * 6, 40), candidate_ids=candidate_ids)
         q_terms = _terms(query)
         rescored = []
         for h in pool:

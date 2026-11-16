@@ -3,16 +3,15 @@ import json
 import os
 from typing import Dict, List, Optional, Set
 
-from ..interface.base_datastore import BaseDatastore
-from ..interface.models import DataItem, ResumeProfile, SearchHit
-from .embedder import Embedder, get_embedder
+from .models import Chunk, ResumeProfile, SearchHit
+from .embeddings import Embedder, get_embedder
 
 
 def _sql_in(ids: Set[str]) -> str:
     return ", ".join("'" + i.replace("'", "''") + "'" for i in sorted(ids))
 
 
-class Datastore(BaseDatastore):
+class LanceStore:
     DB_PATH = "data/recruit-lancedb"
     PROFILE_PATH = "data/profiles.json"
     TABLE = "resumes"
@@ -49,17 +48,17 @@ class Datastore(BaseDatastore):
         print("✅ Database reset complete")
 
     # -- chunks
-    def get_vector(self, content: str) -> List[float]:
-        return self.embedder.encode(content)
+    def embed(self, text: str) -> List[float]:
+        return self.embedder.encode(text)
 
-    def add_items(self, items: List[DataItem]) -> None:
-        if not items:
+    def add_chunks(self, chunks: List[Chunk]) -> None:
+        if not chunks:
             return
-        vectors = self.embedder.encode_many([i.content for i in items])
+        vectors = self.embedder.encode_many([c.content for c in chunks])
         rows = [
-            {"vector": v, "content": i.content, "source": i.source,
-             "candidate_id": i.candidate_id, "section": i.section}
-            for v, i in zip(vectors, items)
+            {"vector": v, "content": c.content, "source": c.source,
+             "candidate_id": c.candidate_id, "section": c.section}
+            for v, c in zip(vectors, chunks)
         ]
         (self.table.merge_insert("source")
             .when_matched_update_all().when_not_matched_insert_all().execute(rows))
@@ -68,7 +67,7 @@ class Datastore(BaseDatastore):
         self.table.delete(f"candidate_id IN ({_sql_in({candidate_id})})")
 
     def search(self, query: str, top_k: int = 5, candidate_ids: Optional[Set[str]] = None) -> List[SearchHit]:
-        q = self.table.search(self.get_vector(query))
+        q = self.table.search(self.embed(query))
         q = q.distance_type("cosine") if hasattr(q, "distance_type") else q.metric("cosine")
         if candidate_ids:
             q = q.where(f"candidate_id IN ({_sql_in(candidate_ids)})", prefilter=True)

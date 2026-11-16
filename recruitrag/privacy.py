@@ -3,7 +3,7 @@ import re
 from dataclasses import replace
 from typing import Dict, Iterable, List
 
-from ..interface.models import CandidateMatch, ResumeProfile, SearchHit
+from .models import CandidateMatch, ResumeProfile, SearchHit
 
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 _PHONE_RE = re.compile(r"\+?\d[\d \t().-]{8,16}\d")
