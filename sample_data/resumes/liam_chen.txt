@@ -1,0 +1,22 @@
+Liam Chen
+liam.chen@example.com | +65 8123 4567 | Singapore
+
+SUMMARY
+Cloud and DevOps engineer with 10 years of experience automating infrastructure and delivery pipelines.
+
+EXPERIENCE
+Lead DevOps Engineer, NimbusOps
+Jan 2020 – Present
+- Led a team of 5 managing multi-cloud infrastructure on AWS and Azure using Terraform.
+- Built CI/CD pipelines (Jenkins, GitLab) and Kubernetes clusters running 200+ services; cut deployment time by 70%.
+- Wrote automation scripts in Python and Bash on Linux.
+
+Systems Engineer, DataHaven
+Aug 2016 – Dec 2019
+- Maintained Linux servers, Docker containers and monitoring stacks.
+
+EDUCATION
+B.Eng. in Information Systems, NUS, 2012 – 2016
+
+SKILLS
+AWS, Azure, Terraform, Docker, Kubernetes, CI/CD, Jenkins, Linux, Python, Git, Leadership

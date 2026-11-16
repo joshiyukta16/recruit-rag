@@ -1,0 +1,13 @@
+Senior Backend Engineer
+
+Requirements
+- 5+ years of backend development experience
+- Python with Django or FastAPI
+- PostgreSQL and REST APIs
+- Docker and Kubernetes
+- AWS
+
+Preferred
+- Kafka
+- Microservices
+- CI/CD

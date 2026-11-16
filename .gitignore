@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+# generated data
+data/
+# real resumes contain personal data - never commit them
+resumes_private/
+uploads/

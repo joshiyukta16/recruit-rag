@@ -1,0 +1,14 @@
+Machine Learning Engineer (LLM / RAG)
+
+We are hiring an ML engineer to build retrieval-augmented generation features for our recruitment platform.
+
+Requirements
+- 3+ years of experience in machine learning or NLP
+- Strong Python
+- Experience with LLMs and RAG pipelines
+- Experience with PyTorch or similar frameworks
+- SQL and cloud (AWS)
+
+Nice to have
+- Spark
+- Docker

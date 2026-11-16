@@ -1,0 +1,20 @@
+Meera Iyer
+meera.iyer@example.com | +91 98450 55566 | Chennai, India
+
+SUMMARY
+Recent graduate with a data analytics internship, seeking a junior data analyst role.
+
+EXPERIENCE
+Data Analyst Intern, QuickMart Retail
+Jun 2025 – Dec 2025
+- Built Power BI dashboards and automated weekly Excel reports with Python and Pandas.
+- Wrote SQL queries to analyse sales across 120 stores.
+
+EDUCATION
+B.Tech in Information Technology, Anna University, 2021 – 2025
+
+PROJECTS
+Customer Churn Analysis: Python, scikit-learn and Tableau dashboard.
+
+SKILLS
+Python, SQL, Excel, Power BI, Tableau, Pandas, Data Analysis, Statistics

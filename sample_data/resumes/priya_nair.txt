@@ -1,0 +1,26 @@
+Priya Nair
+priya.nair@example.com | +91 98200 33344 | Bengaluru, India
+
+SUMMARY
+Data scientist focused on NLP and large language model applications, including retrieval-augmented generation.
+
+EXPERIENCE
+Data Scientist, InsightAI Labs
+Jul 2022 – Present
+- Built a RAG-based document Q&A system using LLMs, embeddings and a vector database; improved answer accuracy by 22%.
+- Fine-tuned transformer models in PyTorch for resume and job-description classification (NLP).
+- Wrote data pipelines in Python and Spark; deployed models on AWS.
+
+Machine Learning Intern, RetailMetrics
+Jan 2022 – Jun 2022
+- Built demand forecasting models with scikit-learn and Pandas.
+
+EDUCATION
+M.Sc. in Data Science, University of Hyderabad, 2020 – 2022
+B.Sc. in Mathematics, Christ University, 2017 – 2020
+
+PROJECTS
+Resume Ranker: semantic search over resumes using sentence embeddings and Python.
+
+SKILLS
+Python, PyTorch, NLP, LLMs, RAG, Machine Learning, SQL, Spark, Pandas, scikit-learn, AWS, Git
